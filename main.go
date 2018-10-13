@@ -55,9 +55,12 @@ func getChild(client *http.Client, attr html.Attribute) error {
 		return err
 	}
 	b, err := ioutil.ReadAll(childResp.Body)
-	defer childResp.Body.Close()
 	if err != nil {
 		return err
+	}
+	defer childResp.Body.Close()
+	if childResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("child status not 200, status: %d", childResp.StatusCode)
 	}
 	length := len(b)
 	fmt.Println("Status Code :", childResp.StatusCode, "length:", length)
