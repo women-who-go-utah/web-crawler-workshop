@@ -19,7 +19,19 @@ func main() {
 		panic(err)
 	}
 	defer resp.Body.Close()
-	goquery.NewDocumentFromReader(resp.Body)
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	selection := doc.Find("a")
+	for _, node := range selection.Nodes {
+		for _, attr := range node.Attr {
+			if attr.Key == "href" {
+				fmt.Println(attr.Val)
+				break
+			}
+		}
+	}
 }
 
 func get(client *http.Client) (*http.Response, error) {
@@ -46,6 +58,6 @@ func get(client *http.Client) (*http.Response, error) {
 	//		return err
 	//	}
 	//	fmt.Println(string(body))
-	return nil, err
+	return resp, err
 	//defer is called here
 }
