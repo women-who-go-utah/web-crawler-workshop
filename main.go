@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 func main() {
@@ -13,16 +14,19 @@ func main() {
 		Timeout: time.Second * 2,
 	}
 
-	if err := get(client); err != nil {
+	resp, err := get(client)
+	if err != nil {
 		panic(err)
 	}
+	defer resp.Body.Close()
+	goquery.NewDocumentFromReader(resp.Body)
 }
 
-func get(client *http.Client) error {
+func get(client *http.Client) (*http.Response, error) {
 	// client.Get("https://air.utah.gov")
 	request, err := http.NewRequest("GET", "https://air.utah.gov", nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	request.AddCookie(&http.Cookie{
 		Name:  "name",
@@ -31,17 +35,17 @@ func get(client *http.Client) error {
 	request.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(request)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer resp.Body.Close()
+	//	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("not a 200 status code")
+		return nil, fmt.Errorf("not a 200 status code")
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(body))
-	return nil
+	//	body, err := ioutil.ReadAll(resp.Body)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	fmt.Println(string(body))
+	return nil, err
 	//defer is called here
 }
