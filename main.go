@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -14,29 +15,43 @@ func main() {
 		Timeout: time.Second * 2,
 	}
 
-	resp, err := get(client)
+	resp, err := get(client, "https://air.utah.gov")
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	//	if len(doc.Nodes) == 0 {
+	//		panic("no nodes found")
+	//	}
 	if err != nil {
 		panic(err)
 	}
 	selection := doc.Find("a")
+	if len(selection.Nodes) == 0 {
+		panic("no 'a' nodes found")
+	}
 	for _, node := range selection.Nodes {
 		for _, attr := range node.Attr {
 			if attr.Key == "href" {
 				fmt.Println(attr.Val)
+				if strings.HasPrefix(attr.Val, "http") {
+					childResp, err := get(client, attr.Val)
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
+					fmt.Println(childResp.ContentLength)
+				}
 				break
 			}
 		}
 	}
 }
 
-func get(client *http.Client) (*http.Response, error) {
+func get(client *http.Client, url string) (*http.Response, error) {
 	// client.Get("https://air.utah.gov")
-	request, err := http.NewRequest("GET", "https://air.utah.gov", nil)
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
