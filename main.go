@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
-	"golang.org/x/net/html"
+	"github.com/PuerkitoBio/goquery"
 )
 
 func main() {
@@ -14,56 +15,51 @@ func main() {
 		Timeout: time.Second * 5,
 	}
 	in := make(chan string, 10)
-	go request(client, in)
-	in <- "https://air.utah.gov"
+	for i := 0; i < 5; i++ {
+		go request(client, in)
+	}
+	//	in <- "https://air.utah.gov"
 
-	//	resp, err := get(client, "https://air.utah.gov")
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	defer resp.Body.Close()
-	//	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	selection := doc.Find("a")
-	//	if len(selection.Nodes) == 0 {
-	//		panic("no 'a' nodes found")
-	//	}
-	//	for _, node := range selection.Nodes {
-	//		for _, attr := range node.Attr {
-	//			if attr.Key == "href" {
-	//				if strings.HasPrefix(attr.Val, "http") {
-	//					err = getChild(client, attr)
-	//					if err != nil {
-	//						fmt.Println(err)
-	//					}
-	//				}
-	//				break
-	//			}
-	//		}
-	//	}
+	resp, err := get(client, "https://air.utah.gov")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	selection := doc.Find("a")
+	if len(selection.Nodes) == 0 {
+		panic("no 'a' nodes found")
+	}
+	for _, node := range selection.Nodes {
+		for _, attr := range node.Attr {
+			if attr.Key == "href" {
+				if strings.HasPrefix(attr.Val, "http") {
+					in <- attr.Val
+				}
+				break
+			}
+		}
+	}
 }
 
 func request(client *http.Client, in chan string) {
 	for {
 		select {
 		case url := <-in:
-			resp, err := get(client, url)
+			err := getChild(client, url)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-			// add routines to parse the childs
-			// time go run main.go
-			fmt.Println(resp.StatusCode)
 		}
 	}
 }
 
-func getChild(client *http.Client, attr html.Attribute) error {
-	fmt.Println(attr.Val)
-	childResp, err := get(client, attr.Val)
+func getChild(client *http.Client, attr string) error {
+	childResp, err := get(client, attr)
 	if err != nil {
 		return err
 	}
@@ -73,10 +69,10 @@ func getChild(client *http.Client, attr html.Attribute) error {
 	}
 	defer childResp.Body.Close()
 	if childResp.StatusCode != http.StatusOK {
-		return fmt.Errorf("child status not 200, status: %d", childResp.StatusCode)
+		return fmt.Errorf("%s is not status 200, status: %d", attr, childResp.StatusCode)
 	}
 	length := len(b)
-	fmt.Println("Status Code :", childResp.StatusCode, "length:", length)
+	fmt.Println("URL :", attr, "Status Code :", childResp.StatusCode, "length:", length)
 	return nil
 }
 
